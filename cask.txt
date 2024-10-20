@@ -1,0 +1,9 @@
+spotify
+obsidian
+notion
+jetbrains-toolbox
+1password
+visual-studio-code
+alacritty
+firefox
+gpg-suite

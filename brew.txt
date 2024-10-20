@@ -1,0 +1,6 @@
+1password-cli
+gh
+git
+stow
+nvm
+docker
