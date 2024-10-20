@@ -1,42 +1,36 @@
 #!/usr/bin/env bash
 
 usage() {
-  echo "Usage: $0 [--install|--uninstall] <BREW_FILE> [CASK_FILE]"
-  echo ""
-  echo "Options:"
-  echo "  --install    Install applications from BREW_FILE and optionally from CASK_FILE."
-  echo "  --uninstall  Uninstall applications from BREW_FILE and optionally from CASK_FILE."
-  echo ""
-  echo "Arguments:"
-  echo "  BREW_FILE    File containing a list of applications for Homebrew."
-  echo "  CASK_FILE    (Optional) File containing a list of applications for Homebrew Cask."
-  echo ""
-  exit 1
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+This script installs or uninstalls brew packages and stows dotfiles for configuration.
+
+Options:
+  -h, --help         Show this help message and exit.
+  --install FILE1 FILE2
+                     Install brew and cask applications listed in FILE1 (brew.txt) and FILE2 (cask.txt).
+  --uninstall FILE1 FILE2
+                     Uninstall brew and cask applications listed in FILE1 (brew.txt) and FILE2 (cask.txt).
+  --stow             Stow dotfiles to create symlinks for configuration files and folders.
+
+Examples:
+  Install brew and cask apps:
+    $(basename "$0") --install brew.txt cask.txt
+
+  Uninstall brew and cask apps:
+    $(basename "$0") --uninstall brew.txt cask.txt
+
+  Stow dotfiles:
+    $(basename "$0") --stow
+
+EOF
 }
 
-if [ $# -lt 2 ]; then
-  usage
-fi
-
-ACTION=$1
-BREW_FILE=$2
-CASK_FILE=$3
-
-if [[ "$ACTION" != "--install" && "$ACTION" != "--uninstall" ]]; then
-  usage
-fi
-
-if [ ! -f "$BREW_FILE" ]; then
-  echo "Error: BREW_FILE '$BREW_FILE' does not exist."
-  exit 1
-fi
-
-if [ ! -z "$CASK_FILE" ] && [ ! -f "$CASK_FILE" ]; then
-  echo "Error: CASK_FILE '$CASK_FILE' does not exist."
-  exit 1
-fi
-
 install_apps() {
+  BREW_FILE=$1
+  CASK_FILE=$2
+
   echo "Installing brew applications from $BREW_FILE"
   while read -r line; do 
     if [[ -n "$line" && "$line" != \#* ]]; then
@@ -65,6 +59,9 @@ install_apps() {
 }
 
 uninstall_apps() {
+  BREW_FILE=$1
+  CASK_FILE=$2
+
   echo "Uninstalling brew applications from $BREW_FILE"
   while read -r line; do 
     if [[ -n "$line" && "$line" != \#* ]]; then
@@ -92,12 +89,86 @@ uninstall_apps() {
   fi
 }
 
-if [ "$ACTION" == "--install" ]; then
-  install_apps
-elif [ "$ACTION" == "--uninstall" ]; then
-  uninstall_apps
-elif [ "$ACTION" == "--config" ]; then
-  echo "config"
-else
+# we want to use stow only for files, since a folder like .config will
+# always contain many other files/folders, we don't want to symlink this folder
+# that's what the --no-folding does
+stow_dotfiles() {
+  local files=(
+    ".zshrc"
+    ".vimrc"
+  )
+  local folders=(
+    ".config/alacritty"
+  )
+
+  echo "Removing existing config files"
+  for f in "${files[@]}"; do
+    echo "-- $HOME/$f"
+    rm -f "$HOME/$f" || true
+  done 
+  echo "Removing existing config folder"
+  for d in "${folders[@]}"; do
+    echo "-- $HOME/$d"
+    rm -rf "$HOME/$d" || true
+    mkdir -p "$HOME/$d"
+  done
+  local dotfiles=("alacritty" "zsh")
+  for dotfile in "${dotfiles[@]}"; do
+    stow --verbose 1 --no-folding "$dotfile"
+  done
+}
+
+no_args=true
+optspec=":qhclLCspOTSU-:"
+while getopts "$optspec" optchar; do
+  no_args=false
+  case "${optchar}" in
+    #Short option
+    h) usage; exit 0;;
+    -)
+      case "${OPTARG}" in
+        # Long options
+        help) usage; exit 0;;
+        install) 
+          # Expect two arguments after --install
+          files=("${!OPTIND}" "${!OPTIND+1}")
+          if [[ ${#files[@]} -ne 2 ]]; then
+            echo "Error: --install requires two file arguments. brew.txt and cask.txt"
+            usage >&2
+            exit 1
+          fi
+          install_apps "${files[0]}" "${files[1]}"
+          OPTIND=$((OPTIND + 2)) # Skip the two arguments
+          ;;
+        uninstall) 
+          # Expect two arguments after --install
+          files=("${!OPTIND}" "${!OPTIND+1}")
+          if [[ ${#files[@]} -ne 2 ]]; then
+            echo "Error: --uninstall requires two file arguments. brew.txt and cask.txt"
+            usage >&2
+            exit 1
+          fi
+          uninstall_apps "${files[0]}" "${files[1]}"
+          OPTIND=$((OPTIND + 2)) # Skip the two arguments
+          ;;
+        stow) stow_dotfiles;;
+        *)
+          echo "Unknown option --${OPTARG}" >&2
+          usage >&2;
+          exit 1
+          ;;
+      esac;;
+      *)
+        echo "Unknown option -${OPTARG}" >&2
+        usage >&2
+        exit 1
+        ;;
+  esac
+done
+
+# Check if no arguments were passed
+if $no_args; then
+  echo "Error: No arguments provided."
   usage
+  exit 1
 fi
