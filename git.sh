@@ -40,6 +40,7 @@ if ! gh auth status > /dev/null 2>&1; then
   gh auth login -h github.com -p ssh -w
 else
   echo "Already authenticated with GitHub."
+  gh ssh-key add -t "gh_$GIT_USER_NAME" < "$SSH_FILE_PATH.pub"
 fi
 
 scopes=$(curl -s -I -H "Authorization: token $(gh auth token)" https://api.github.com/user | grep 'X-OAuth-Scopes:')
@@ -71,4 +72,4 @@ EOF
 
 gh auth refresh -s write:gpg_key
 KEY_ID=$(gpg --list-secret-keys --keyid-format=long | awk '/sec/{print $2}' | tail -n1 | cut -d'/' -f2)
-gpg --armor --export "$KEY_ID" | gh gpg-key add -t test
+gpg --armor --export "$KEY_ID" | gh gpg-key add -t "gpg_$GIT_USER_NAME"
