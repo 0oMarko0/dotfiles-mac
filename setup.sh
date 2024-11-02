@@ -119,7 +119,7 @@ stow_dotfiles() {
 }
 
 no_args=true
-optspec=":qhclLCspOTSU-:"
+optspec=":h-:"
 while getopts "$optspec" optchar; do
   no_args=false
   case "${optchar}" in
@@ -131,7 +131,8 @@ while getopts "$optspec" optchar; do
         help) usage; exit 0;;
         install) 
           # Expect two arguments after --install
-          files=("${!OPTIND}" "${!OPTIND+1}")
+          files=("${@:OPTIND:2}")         
+           echo "FILE ${files[0]} ${files[1]}"
           if [[ ${#files[@]} -ne 2 ]]; then
             echo "Error: --install requires two file arguments. brew.txt and cask.txt"
             usage >&2
@@ -142,7 +143,7 @@ while getopts "$optspec" optchar; do
           ;;
         uninstall) 
           # Expect two arguments after --install
-          files=("${!OPTIND}" "${!OPTIND+1}")
+          files=("${@:OPTIND:2}")
           if [[ ${#files[@]} -ne 2 ]]; then
             echo "Error: --uninstall requires two file arguments. brew.txt and cask.txt"
             usage >&2
@@ -168,7 +169,6 @@ done
 
 # Check if no arguments were passed
 if $no_args; then
-  echo "Error: No arguments provided."
   usage
   exit 1
 fi
