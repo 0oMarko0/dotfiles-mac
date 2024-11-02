@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 
+# Assigns the first and second command-line arguments to GIT_USERNAME and GIT_EMAIL variables
 GIT_USERNAME=$1
 GIT_EMAIL=$2
+
+# Sets the file path for the SSH key based on the GitHub username
 SSH_FILE_PATH="$HOME/.ssh/gh_$GIT_USERNAME"
+
+# Configures the SSH settings to use the generated key
 SSH_CONFIG="
 Host github.com
   UseKeychain yes
@@ -14,6 +19,7 @@ function setupGit() {
   echo "Setup git configuration"
   git config --global user.name "$GIT_USERNAME"
   git config --global user.email "$GIT_EMAIL"
+  # Enables GPG signing for commits
   git config --global commit.gpgsign true
 }
 
@@ -26,7 +32,10 @@ function setupSSH() {
     read -r -s SSH_PASSPHRASE
   fi
 
-  ssh-keygen -t ed25519 -C "$GIT_EMAIL" -f "$SSH_FILE_PATH" -N "$SSH_PASSPHRASE" && ssh-add --apple-use-keychain "$SSH_FILE_PATH"
+  # Generates an SSH key with the given email as a label, using passphrase if set
+  ssh-keygen -t ed25519 -C "$GIT_EMAIL" -f "$SSH_FILE_PATH" -N "$SSH_PASSPHRASE"
+  # Adds the SSH key to the macOS keychain
+  ssh-add --apple-use-keychain "$SSH_FILE_PATH"
   eval "$(ssh-agent -s)"
 
   if [[ ! -f "$HOME/.ssh/config" ]]; then
@@ -34,20 +43,20 @@ function setupSSH() {
   fi
 
   echo "$SSH_CONFIG" >> "$HOME/.ssh/config"
-  ssh-add --apple-use-keychain "$SSH_FILE_PATH"
 
   if ! gh auth status > /dev/null 2>&1; then
     echo "Logging into GitHub using gh"
     gh auth login -h github.com -p ssh -w
   else
     echo "Already authenticated with GitHub."
+    # Adds the public SSH key to GitHub via GitHub CLI
     gh ssh-key add -t "gh_$GIT_USERNAME" < "$SSH_FILE_PATH.pub"
   fi
 }
 
 function setupGPG() {
+  # Checks if the GitHub token has write permissions for GPG keys
   scopes=$(curl -s -I -H "Authorization: token $(gh auth token)" https://api.github.com/user | grep 'X-OAuth-Scopes:')
-
   if echo "$scopes" | grep -q "write:gpg_key"; then
     echo "Token has the write:gpg_key permission."
   else
@@ -63,6 +72,7 @@ function setupGPG() {
     read -r -s GPG_PASSPHRASE
   fi
 
+  # Generates a GPG key with the given username and email, using passphrase if set
   gpg --batch --generate-key <<EOF
   %no-protection
   Key-Type: default
@@ -73,6 +83,7 @@ function setupGPG() {
   Passphrase: $GPG_PASSPHRASE
 EOF
 
+  # Retrieves the GPG key ID and uploads it to GitHub via GitHub CLI
   KEY_ID=$(gpg --list-secret-keys --keyid-format=long | awk '/sec/{print $2}' | tail -n1 | cut -d'/' -f2)
   gpg --armor --export "$KEY_ID" | gh gpg-key add -t "gpg_$GIT_USERNAME"
 }
