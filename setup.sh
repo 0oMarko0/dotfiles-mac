@@ -123,26 +123,21 @@ optspec=":h-:"
 while getopts "$optspec" optchar; do
   no_args=false
   case "${optchar}" in
-    #Short option
     h) usage; exit 0;;
     -)
       case "${OPTARG}" in
-        # Long options
         help) usage; exit 0;;
         install) 
-          # Expect two arguments after --install
           files=("${@:OPTIND:2}")         
-           echo "FILE ${files[0]} ${files[1]}"
           if [[ ${#files[@]} -ne 2 ]]; then
             echo "Error: --install requires two file arguments. brew.txt and cask.txt"
             usage >&2
             exit 1
           fi
           install_apps "${files[0]}" "${files[1]}"
-          OPTIND=$((OPTIND + 2)) # Skip the two arguments
+          OPTIND=$((OPTIND + 2))
           ;;
         uninstall) 
-          # Expect two arguments after --install
           files=("${@:OPTIND:2}")
           if [[ ${#files[@]} -ne 2 ]]; then
             echo "Error: --uninstall requires two file arguments. brew.txt and cask.txt"
@@ -150,7 +145,7 @@ while getopts "$optspec" optchar; do
             exit 1
           fi
           uninstall_apps "${files[0]}" "${files[1]}"
-          OPTIND=$((OPTIND + 2)) # Skip the two arguments
+          OPTIND=$((OPTIND + 2))
           ;;
         stow) stow_dotfiles;;
         *)
