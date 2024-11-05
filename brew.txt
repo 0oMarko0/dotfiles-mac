@@ -5,3 +5,8 @@ stow
 nvm
 docker
 awscli
+yarn
+postgresql
+noevim
+go
+tree

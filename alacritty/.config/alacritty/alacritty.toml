@@ -1,6 +1,7 @@
-import = [
+general.import = [
     "~/dotfiles/alacritty/.config/alacritty/themes/catppucin-mocha.toml"
 ]
+
 [env]
 TERM = "xterm-256color"
 

@@ -85,7 +85,7 @@ EOF
 
   # Retrieves the GPG key ID and uploads it to GitHub via GitHub CLI
   KEY_ID=$(gpg --list-secret-keys --keyid-format=long | awk '/sec/{print $2}' | tail -n1 | cut -d'/' -f2)
-  gpg --armor --export "$KEY_ID" | gh gpg-key add -t "gpg_$GIT_USERNAME"
+  gpg --armor --export "$KEY_ID" | gh gpg-key add -t "gaiia_$GIT_USERNAME"
 }
 
 setupGit
